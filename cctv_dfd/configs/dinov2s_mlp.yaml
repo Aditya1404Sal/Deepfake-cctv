@@ -1,0 +1,26 @@
+# Default config — frozen DINOv2 ViT-S/14 + MLP head.
+
+backbone:
+  name: dinov2-small
+
+head:
+  kind: mlp
+  hidden: 256
+  dropout: 0.3
+
+enhance:
+  # 'none' is the safe default for training; switch to 'forensic' or
+  # 'aggressive' to run enhancement ablations.
+  enhance_mode: none
+
+train:
+  epochs: 20
+  batch_size: 64
+  lr: 3.0e-4
+  weight_decay: 1.0e-4
+  patience: 4
+  num_workers: 2
+  seed: 1337
+  image_size: 224
+  sample_profiles: [clean, light_cctv, heavy_cctv, low_light_gray, ir_pseudo]
+  sample_weights: [0.4, 0.2, 0.2, 0.1, 0.1]

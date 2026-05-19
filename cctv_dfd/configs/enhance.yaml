@@ -1,0 +1,26 @@
+# Reference documentation of the 3 input-enhancement modes.
+# Implemented in src/cctv_dfd/enhance.py.
+
+modes:
+  none:
+    description: Identity. Use as baseline.
+    hallucination_risk: none
+
+  forensic:
+    description: Deterministic local filters. Safe default.
+    ops:
+      - "CLAHE on L channel (clip=2.0, tile=8x8)"
+      - "Bilateral denoise (d=5, sigmaColor=50, sigmaSpace=50)"
+      - "Unsharp mask (radius=1.0, amount=0.5)"
+    hallucination_risk: none
+
+  aggressive:
+    description: Neural face restoration. Opt-in, ablation only.
+    ops:
+      - "Real-ESRGAN x2 (NAFNet-deblur fallback)"
+      - "Resize back to original H,W"
+    hallucination_risk: high
+    warning: |
+      Neural restoration is known to ERASE deepfake artifacts on clean inputs
+      and FABRICATE synthetic-looking detail on real faces. Use only for the
+      enhancement ablation; not as a production default.

@@ -1,0 +1,40 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cctv_dfd"
+version = "0.1.0"
+description = "Foundation-model features for CCTV deepfake detection"
+requires-python = ">=3.9"
+readme = "README.md"
+license = { text = "Apache-2.0" }
+authors = [{ name = "Aditya Salunkhe et al." }]
+dependencies = [
+  "torch>=2.2",
+  "torchvision>=0.17",
+  "transformers>=4.40",
+  "timm>=0.9.16",
+  "open_clip_torch>=2.24",
+  "albumentations>=1.4",
+  "opencv-python>=4.8",
+  "numpy>=1.24",
+  "pillow>=10.0",
+  "scikit-learn>=1.3",
+  "captum>=0.7",
+  "facenet-pytorch>=2.5",
+  "jinja2>=3.1",
+  "pyyaml>=6.0",
+  "tqdm>=4.65",
+  "matplotlib>=3.7",
+]
+
+[project.optional-dependencies]
+insight = ["insightface>=0.7", "onnxruntime>=1.16"]
+restore = ["realesrgan>=0.3", "basicsr>=1.4"]
+
+[project.scripts]
+cctv-dfd = "cctv_dfd.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]

@@ -1,0 +1,25 @@
+# Ablation backbone — OpenCLIP ViT-B/16 (laion2b_s34b_b88k).
+# 512-d features. Otherwise identical to dinov2s_mlp.yaml.
+
+backbone:
+  name: clip-vit-b16
+
+head:
+  kind: mlp
+  hidden: 256
+  dropout: 0.3
+
+enhance:
+  enhance_mode: none
+
+train:
+  epochs: 20
+  batch_size: 64
+  lr: 3.0e-4
+  weight_decay: 1.0e-4
+  patience: 4
+  num_workers: 2
+  seed: 1337
+  image_size: 224
+  sample_profiles: [clean, light_cctv, heavy_cctv, low_light_gray, ir_pseudo]
+  sample_weights: [0.4, 0.2, 0.2, 0.1, 0.1]
