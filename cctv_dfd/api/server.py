@@ -30,7 +30,8 @@ import torch
 import torch.nn.functional as F
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, Response
+from fastapi.responses import FileResponse, JSONResponse, Response
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from cctv_dfd.degradations import PROFILE_NAMES, apply_profile
@@ -233,8 +234,12 @@ def _validate_modes(enhance_mode: str, profile: str) -> tuple[str, str]:
 # ---------------------------------------------------------------------------
 
 
-@app.get("/", response_model=HealthResponse)
-def root():
+_STATIC_DIR = Path(__file__).resolve().parent / "static"
+_INDEX_PATH = _STATIC_DIR / "index.html"
+
+
+@app.get("/health", response_model=HealthResponse)
+def health():
     if STATE.backbone is None:
         raise HTTPException(status_code=503, detail="model not loaded")
     return HealthResponse(
@@ -247,6 +252,18 @@ def root():
         profiles=list(PROFILE_NAMES),
         enhance_modes=list(ENHANCE_MODES),
     )
+
+
+# Browser landing page: serve index.html at root. JSON health is at /health.
+@app.get("/")
+def root():
+    if _INDEX_PATH.exists():
+        return FileResponse(_INDEX_PATH)
+    return health()
+
+
+if _STATIC_DIR.exists():
+    app.mount("/static", StaticFiles(directory=str(_STATIC_DIR)), name="static")
 
 
 @app.post("/predict", response_model=PredictResponse)

@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>cctv_dfd — Forensic Deepfake Screening</title>
+  <style>
+    :root {
+      --bg: #0f1115;
+      --panel: #161922;
+      --panel-2: #1d2230;
+      --border: #2a3142;
+      --text: #e6e9ef;
+      --muted: #8b93a7;
+      --accent: #4f8cff;
+      --fake: #e0524d;
+      --real: #38b27c;
+      --warn: #d8a23a;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); }
+    body { padding: 2rem; max-width: 1100px; margin: 0 auto; }
+    h1 { font-size: 1.5rem; margin: 0 0 .25rem; }
+    .sub { color: var(--muted); font-size: .9rem; margin-bottom: 2rem; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+    @media (max-width: 800px) { .grid { grid-template-columns: 1fr; } }
+    .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 1.25rem; }
+    .panel h2 { margin: 0 0 1rem; font-size: 1rem; color: var(--muted); font-weight: 600; letter-spacing: .05em; text-transform: uppercase; }
+
+    .dropzone {
+      border: 2px dashed var(--border);
+      border-radius: 12px;
+      padding: 3rem 1rem;
+      text-align: center;
+      color: var(--muted);
+      cursor: pointer;
+      transition: border-color .15s, background .15s;
+    }
+    .dropzone:hover, .dropzone.drag { border-color: var(--accent); background: var(--panel-2); color: var(--text); }
+    .dropzone input { display: none; }
+    .dropzone .hint { font-size: .85rem; margin-top: .5rem; }
+
+    .controls { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; margin: 1rem 0; }
+    .controls label { display: flex; flex-direction: column; font-size: .8rem; color: var(--muted); gap: .25rem; }
+    .controls select { background: var(--panel-2); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: .5rem; font-size: .9rem; }
+
+    .btn { background: var(--accent); color: white; border: none; border-radius: 8px; padding: .75rem 1.25rem; font-size: .95rem; font-weight: 600; cursor: pointer; width: 100%; }
+    .btn:disabled { opacity: .5; cursor: not-allowed; }
+    .btn.secondary { background: transparent; border: 1px solid var(--border); color: var(--text); }
+
+    .verdict { display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem; }
+    .badge { padding: .4rem .9rem; border-radius: 999px; font-weight: 700; letter-spacing: .05em; font-size: .85rem; }
+    .badge.fake { background: var(--fake); color: white; }
+    .badge.real { background: var(--real); color: white; }
+    .badge.warn { background: var(--warn); color: #1a1a1a; }
+    .prob { font-size: 2rem; font-weight: 700; }
+    .prob small { font-size: .8rem; color: var(--muted); font-weight: 400; display: block; margin-top: .1rem; }
+
+    .bar { background: var(--panel-2); height: 8px; border-radius: 4px; overflow: hidden; margin-bottom: 1rem; }
+    .bar > div { height: 100%; transition: width .3s; }
+
+    .img-row { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; }
+    .img-row figure { margin: 0; }
+    .img-row figcaption { font-size: .75rem; color: var(--muted); margin-top: .35rem; text-align: center; }
+    .img-row img { width: 100%; border-radius: 8px; border: 1px solid var(--border); display: block; }
+
+    table.meta { width: 100%; border-collapse: collapse; font-size: .85rem; }
+    table.meta th, table.meta td { text-align: left; padding: .35rem .5rem; border-bottom: 1px solid var(--border); }
+    table.meta th { color: var(--muted); font-weight: 500; width: 35%; }
+    table.meta code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .8rem; word-break: break-all; }
+
+    details { background: var(--panel-2); border-radius: 8px; padding: .75rem; margin-top: 1rem; }
+    details summary { cursor: pointer; color: var(--muted); font-size: .85rem; }
+    pre { margin: .75rem 0 0; font-size: .8rem; overflow-x: auto; color: var(--text); }
+
+    .status { font-size: .85rem; color: var(--muted); margin-top: .5rem; }
+    .status.error { color: var(--fake); }
+    .spinner { display: inline-block; width: 1rem; height: 1rem; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin .8s linear infinite; vertical-align: middle; margin-right: .5rem; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .empty { text-align: center; color: var(--muted); padding: 3rem 1rem; font-size: .9rem; }
+    .footer { color: var(--muted); font-size: .75rem; margin-top: 2rem; padding-top: 1rem; border-top: 1px solid var(--border); text-align: center; }
+    .footer .warn { color: var(--warn); }
+  </style>
+</head>
+<body>
+  <h1>Forensic CCTV Deepfake Screening</h1>
+  <p class="sub">Frozen DINOv2 ViT-S/14 + MLP classifier head, with degradation-aware preprocessing. <span id="model-info">Loading model…</span></p>
+
+  <div class="grid">
+    <div class="panel">
+      <h2>1. Upload</h2>
+
+      <label class="dropzone" id="drop">
+        <input type="file" id="file" accept="image/*">
+        <div id="drop-text">
+          <strong>Drop a face image here</strong>
+          <div class="hint">or click to choose — JPG / PNG, ideally 224×224 face crop</div>
+        </div>
+      </label>
+
+      <div class="controls">
+        <label>
+          Enhancement
+          <select id="enhance">
+            <option value="none">none</option>
+            <option value="forensic" selected>forensic (CLAHE + denoise)</option>
+            <option value="aggressive">aggressive (Real-ESRGAN — ablation)</option>
+          </select>
+        </label>
+        <label>
+          Simulated degradation
+          <select id="profile">
+            <option value="clean" selected>clean</option>
+            <option value="light_cctv">light_cctv</option>
+            <option value="heavy_cctv">heavy_cctv</option>
+            <option value="low_light_gray">low_light_gray</option>
+            <option value="ir_pseudo">ir_pseudo</option>
+          </select>
+        </label>
+      </div>
+
+      <button class="btn" id="run" disabled>Analyze</button>
+      <div class="status" id="status"></div>
+    </div>
+
+    <div class="panel">
+      <h2>2. Result</h2>
+      <div id="result">
+        <div class="empty">Awaiting an image.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    Forensic-ready logging — not a court-admissibility certification. <span class="warn">Use of the output as evidence requires independent expert review.</span>
+  </div>
+
+<script>
+const dropEl = document.getElementById('drop');
+const fileEl = document.getElementById('file');
+const runBtn = document.getElementById('run');
+const statusEl = document.getElementById('status');
+const resultEl = document.getElementById('result');
+const enhanceEl = document.getElementById('enhance');
+const profileEl = document.getElementById('profile');
+const modelInfoEl = document.getElementById('model-info');
+
+let currentFile = null;
+
+// Health check on load so user sees the backbone name + checkpoint SHA.
+fetch('/health').then(r => r.json()).then(j => {
+  modelInfoEl.textContent =
+    `Backbone: ${j.backbone} (${j.feature_dim}-d), device: ${j.device}, ckpt: ${j.checkpoint_sha256.slice(0,12)}…`;
+}).catch(() => { modelInfoEl.textContent = 'API not reachable.'; });
+
+function setFile(f) {
+  if (!f) return;
+  if (!f.type.startsWith('image/')) { setStatus('Not an image file.', true); return; }
+  currentFile = f;
+  document.getElementById('drop-text').innerHTML =
+    `<strong>${f.name}</strong><div class="hint">${(f.size/1024).toFixed(0)} KB — ready to analyze</div>`;
+  runBtn.disabled = false;
+  setStatus('');
+}
+
+dropEl.addEventListener('click', () => fileEl.click());
+fileEl.addEventListener('change', e => setFile(e.target.files[0]));
+['dragenter','dragover'].forEach(ev => dropEl.addEventListener(ev, e => { e.preventDefault(); dropEl.classList.add('drag'); }));
+['dragleave','drop'].forEach(ev => dropEl.addEventListener(ev, e => { e.preventDefault(); dropEl.classList.remove('drag'); }));
+dropEl.addEventListener('drop', e => setFile(e.dataTransfer.files[0]));
+
+function setStatus(msg, isError=false) {
+  statusEl.textContent = msg;
+  statusEl.classList.toggle('error', isError);
+}
+
+runBtn.addEventListener('click', async () => {
+  if (!currentFile) return;
+  runBtn.disabled = true;
+  setStatus(''); setStatus('Analyzing…');
+  statusEl.innerHTML = '<span class="spinner"></span>Analyzing…';
+
+  const fd = new FormData();
+  fd.append('image', currentFile);
+  const qs = new URLSearchParams({ enhance_mode: enhanceEl.value, profile: profileEl.value });
+
+  try {
+    const r = await fetch(`/predict/full?${qs}`, { method: 'POST', body: fd });
+    if (!r.ok) throw new Error(`HTTP ${r.status}: ${await r.text()}`);
+    const j = await r.json();
+    render(j);
+    setStatus('');
+  } catch (e) {
+    setStatus(`Error: ${e.message}`, true);
+  } finally {
+    runBtn.disabled = false;
+  }
+});
+
+function render(j) {
+  const isFake = j.prediction === 'fake';
+  const pct = (j.prob_fake * 100).toFixed(1);
+  const conf = Math.abs(j.prob_fake - 0.5) * 2 * 100;  // distance from decision boundary
+  const lowConf = conf < 20;
+
+  const inputPreview = URL.createObjectURL(currentFile);
+  const heatmap = j.heatmap_png_base64
+    ? `<figure><img src="data:image/png;base64,${j.heatmap_png_base64}"><figcaption>Attention rollout (ViT)</figcaption></figure>`
+    : `<figure><div class="empty" style="padding:1rem">No attention map (backbone did not expose attentions)</div></figure>`;
+
+  resultEl.innerHTML = `
+    <div class="verdict">
+      <span class="badge ${isFake ? 'fake' : 'real'}">${j.prediction.toUpperCase()}</span>
+      ${lowConf ? '<span class="badge warn">LOW CONFIDENCE</span>' : ''}
+      <div class="prob">${pct}%<small>p(fake)</small></div>
+    </div>
+    <div class="bar"><div style="width:${pct}%; background:${isFake ? 'var(--fake)' : 'var(--real)'}"></div></div>
+
+    <div class="img-row">
+      <figure><img src="${inputPreview}"><figcaption>Input</figcaption></figure>
+      ${heatmap}
+    </div>
+
+    <table class="meta" style="margin-top:1rem">
+      <tr><th>Backbone</th><td>${j.backbone}</td></tr>
+      <tr><th>Enhancement</th><td>${j.enhance_mode}</td></tr>
+      <tr><th>Degradation profile</th><td>${j.degradation_profile}</td></tr>
+      <tr><th>Timestamp (UTC)</th><td>${j.timestamp_utc}</td></tr>
+      <tr><th>Input SHA-256</th><td><code>${j.input_sha256}</code></td></tr>
+      <tr><th>Model SHA-256</th><td><code>${j.model_sha256}</code></td></tr>
+    </table>
+
+    <details>
+      <summary>Raw JSON response</summary>
+      <pre>${JSON.stringify({...j, heatmap_png_base64: j.heatmap_png_base64 ? `<${j.heatmap_png_base64.length} chars>` : null}, null, 2)}</pre>
+    </details>
+  `;
+}
+</script>
+</body>
+</html>

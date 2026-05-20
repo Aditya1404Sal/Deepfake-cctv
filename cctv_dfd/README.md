@@ -85,11 +85,15 @@ uvicorn api.server:app --host 0.0.0.0 --port 8000
 
 Endpoints:
 
-- `GET  /` — health + loaded model info (backbone, SHA-256, available
-  profiles and enhancement modes)
+- `GET  /` — **the web UI** (drag-drop face image → verdict + heatmap + JSON)
+- `GET  /health` — JSON health blob: backbone, SHA-256, available profiles + enhancement modes
 - `POST /predict` — multipart image upload → JSON verdict only (fastest)
 - `POST /predict/heatmap` — multipart image → PNG of attention-rollout overlay
 - `POST /predict/full` — multipart image → JSON with embedded base64 heatmap
+
+For the web UI, just open `http://localhost:8000/` in any browser — there is
+no separate frontend build step, the page is a static HTML file served by the
+FastAPI app.
 
 Query params accepted by all three POSTs:
 
