@@ -476,7 +476,7 @@ export default function App() {
               <div className="opacity-initial-0 animate-fade-up animate-delay-300"
                 style={{ animationFillMode: 'forwards' }}>
                 <p className="text-slate-400 text-base leading-relaxed max-w-lg">
-                  A forensic screening pipeline using a frozen <span className="text-slate-300 font-medium">DINOv2 ViT-S/14</span> vision
+                  A frame-level forensic screening pipeline using a frozen <span className="text-slate-300 font-medium">DINOv2 ViT-S/14</span> vision
                   encoder and a lightweight <span className="text-slate-300 font-medium">MLP classifier head</span>, evaluated explicitly
                   across CCTV degradation profiles. Forensic-ready logging for surveillance-imagery deepfake detection.
                 </p>
@@ -487,9 +487,9 @@ export default function App() {
                 style={{ animationFillMode: 'forwards' }}>
                 <div className="flex flex-wrap gap-3">
                   <StatPill value="0.88" label="Val. AUC-ROC" />
-                  <StatPill value="79%" label="Val. Accuracy" />
+                  <StatPill value="0.80" label="Val. F1" />
                   <StatPill value="10K" label="Frames" />
-                  <StatPill value="5×3" label="Eval matrix" />
+                  <StatPill value="5×2" label="Eval matrix" />
                 </div>
               </div>
 
