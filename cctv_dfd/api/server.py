@@ -164,6 +164,14 @@ class PredictFullResponse(PredictResponse):
     heatmap_png_base64: Optional[str] = None
 
 
+class PredictSimpleResponse(BaseModel):
+    """React-app contract: {label, confidence}. Confidence is *always*
+    the probability of the predicted class (so 'REAL' near 1.0 means very
+    confident real, 'FAKE' near 1.0 means very confident fake)."""
+    label: str
+    confidence: float
+
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -266,13 +274,37 @@ if _STATIC_DIR.exists():
     app.mount("/static", StaticFiles(directory=str(_STATIC_DIR)), name="static")
 
 
-@app.post("/predict", response_model=PredictResponse)
-async def predict(
+@app.post("/predict", response_model=PredictSimpleResponse)
+async def predict_simple(
     image: UploadFile = File(...),
     enhance_mode: str = "none",
     profile: str = "clean",
 ):
-    """Image -> JSON verdict. No heatmap (faster)."""
+    """Minimal contract for browser frontends: {label, confidence}.
+
+    Matches the shape the React frontend (``cctv_dfd/frontend/``) expects.
+    Rich response (with SHA-256 hashes, backbone, etc.) is at
+    ``POST /predict/v1``; heatmap variants at ``/predict/heatmap`` and
+    ``/predict/full``.
+    """
+    enhance_mode, profile = _validate_modes(enhance_mode, profile)
+    raw = await image.read()
+    img_bgr = _read_image_from_upload(raw)
+    _processed, tensor = _preprocess(img_bgr, enhance_mode, profile)
+    prob, _ = _infer(tensor, want_attentions=False)
+    label = "FAKE" if prob >= 0.5 else "REAL"
+    confidence = float(prob if label == "FAKE" else 1.0 - prob)
+    return PredictSimpleResponse(label=label, confidence=confidence)
+
+
+@app.post("/predict/v1", response_model=PredictResponse)
+async def predict_v1(
+    image: UploadFile = File(...),
+    enhance_mode: str = "none",
+    profile: str = "clean",
+):
+    """Image -> rich JSON verdict (SHA-256 hashes, backbone, timestamps).
+    No heatmap (faster than /predict/full)."""
     enhance_mode, profile = _validate_modes(enhance_mode, profile)
     raw = await image.read()
     img_bgr = _read_image_from_upload(raw)

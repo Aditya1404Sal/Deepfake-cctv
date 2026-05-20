@@ -192,7 +192,7 @@ cctv_dfd/data/processed/
 cctv_dfd/data/cache/
 cctv_dfd/results/checkpoints/
 cctv_dfd/results/metrics/
-cctv_dfd/reports/*.html
+cctv_dfd/reports/
 cctv_dfd/results/forensic.jsonl
 
 # Reports / PDFs (track separately if needed)
@@ -201,3 +201,26 @@ cctv_dfd/results/forensic.jsonl
 # OS
 .DS_Store
 Thumbs.db
+
+# ----------------------------------------------------------------------------
+# cctv_dfd frontend (Vite + React)
+# ----------------------------------------------------------------------------
+node_modules/
+.vercel/
+.vite/
+cctv_dfd/frontend/dist/
+cctv_dfd/frontend/.env
+cctv_dfd/frontend/.env.local
+
+# Generic project-data we don't want tracked even if it ends up in oddly
+# named subdirs
+local_dataset.zip
+cctv_dfd_results.zip
+clip_checkpoint.zip
+AI Face Detection Page.zip
+ai-face-page/
+
+# IDE
+.claude/
+.idea/
+.vscode/

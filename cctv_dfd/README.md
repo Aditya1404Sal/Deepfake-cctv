@@ -87,13 +87,55 @@ Endpoints:
 
 - `GET  /` — **the web UI** (drag-drop face image → verdict + heatmap + JSON)
 - `GET  /health` — JSON health blob: backbone, SHA-256, available profiles + enhancement modes
-- `POST /predict` — multipart image upload → JSON verdict only (fastest)
+- `POST /predict` — multipart image upload → `{label, confidence}` (React contract)
+- `POST /predict/v1` — multipart image upload → rich JSON (backbone, SHA-256, timestamps)
 - `POST /predict/heatmap` — multipart image → PNG of attention-rollout overlay
-- `POST /predict/full` — multipart image → JSON with embedded base64 heatmap
+- `POST /predict/full` — multipart image → rich JSON with embedded base64 heatmap
 
-For the web UI, just open `http://localhost:8000/` in any browser — there is
-no separate frontend build step, the page is a static HTML file served by the
-FastAPI app.
+There are two web UIs available:
+
+- **Minimal built-in UI:** open `http://localhost:8000/` once uvicorn is
+  running — a single static HTML page served by the FastAPI app itself, no
+  Node/npm needed.
+- **React / Vite UI (recommended for demos):** see `cctv_dfd/frontend/`,
+  instructions below.
+
+## React frontend (cctv_dfd/frontend/)
+
+A polished Vite + React + Tailwind UI for the same backend. Two ways to run:
+
+### Dev mode (live reload, two processes)
+
+```bash
+# Terminal 1 — backend
+cd cctv_dfd
+uvicorn api.server:app --host 0.0.0.0 --port 8000
+
+# Terminal 2 — frontend
+cd cctv_dfd/frontend
+npm install        # one-time, ~2 min
+npm run dev        # http://localhost:3000
+```
+
+Vite proxies `/predict` and `/health` to `localhost:8000` automatically.
+
+### Production build served by FastAPI (single process)
+
+```bash
+cd cctv_dfd/frontend
+npm install
+npm run build      # outputs dist/
+
+# point FastAPI at the React build instead of the minimal HTML UI
+cp -r dist/* ../api/static/
+cd ..
+uvicorn api.server:app --host 0.0.0.0 --port 8000
+```
+
+The React UI calls `POST /predict` expecting `{label: "REAL" | "FAKE",
+confidence: 0..1}`. The richer FastAPI responses (with SHA-256, attention
+heatmap, etc.) live at `POST /predict/v1`, `/predict/heatmap`, and
+`/predict/full`.
 
 Query params accepted by all three POSTs:
 
