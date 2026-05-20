@@ -50,6 +50,33 @@ DEFAULT_SAMPLE_WEIGHTS: List[float] = [0.4, 0.2, 0.2, 0.1, 0.1]
 # ---------------------------------------------------------------------------
 
 
+def _compat_image_compression(q_low: int, q_high: int):
+    """Albumentations renamed quality_lower/upper -> quality_range in 1.4+."""
+    try:
+        return A.ImageCompression(quality_range=(q_low, q_high), p=1.0)
+    except TypeError:
+        return A.ImageCompression(quality_lower=q_low, quality_upper=q_high, p=1.0)
+
+
+def _compat_downscale(s_low: float, s_high: float):
+    """Renamed scale_min/scale_max -> scale_range; interpolation -> interpolation_pair."""
+    try:
+        return A.Downscale(scale_range=(s_low, s_high), p=1.0)
+    except TypeError:
+        return A.Downscale(scale_min=s_low, scale_max=s_high,
+                           interpolation=cv2.INTER_AREA, p=1.0)
+
+
+def _compat_gauss_noise(var_low: float, var_high: float):
+    """Renamed var_limit -> std_range (and units changed to std, not var)."""
+    try:
+        std_low = float(var_low) ** 0.5 / 255.0
+        std_high = float(var_high) ** 0.5 / 255.0
+        return A.GaussNoise(std_range=(std_low, std_high), p=1.0)
+    except TypeError:
+        return A.GaussNoise(var_limit=(var_low, var_high), p=1.0)
+
+
 def _alb_clean() -> "A.Compose":
     return A.Compose([A.NoOp()])
 
@@ -57,9 +84,9 @@ def _alb_clean() -> "A.Compose":
 def _alb_light_cctv() -> "A.Compose":
     return A.Compose(
         [
-            A.ImageCompression(quality_lower=55, quality_upper=75, p=1.0),
-            A.Downscale(scale_min=0.5, scale_max=0.75, interpolation=cv2.INTER_AREA, p=1.0),
-            A.GaussNoise(var_limit=(10.0, 25.0), p=1.0),
+            _compat_image_compression(55, 75),
+            _compat_downscale(0.5, 0.75),
+            _compat_gauss_noise(10.0, 25.0),
         ]
     )
 
@@ -67,10 +94,10 @@ def _alb_light_cctv() -> "A.Compose":
 def _alb_heavy_cctv() -> "A.Compose":
     return A.Compose(
         [
-            A.ImageCompression(quality_lower=30, quality_upper=50, p=1.0),
-            A.Downscale(scale_min=0.25, scale_max=0.4, interpolation=cv2.INTER_AREA, p=1.0),
+            _compat_image_compression(30, 50),
+            _compat_downscale(0.25, 0.4),
             A.MotionBlur(blur_limit=7, p=1.0),
-            A.GaussNoise(var_limit=(20.0, 50.0), p=1.0),
+            _compat_gauss_noise(20.0, 50.0),
         ]
     )
 
@@ -80,7 +107,7 @@ def _alb_low_light_gray() -> "A.Compose":
         [
             A.ToGray(p=1.0),
             A.RandomBrightnessContrast(brightness_limit=(-0.4, -0.2), contrast_limit=(-0.1, 0.1), p=1.0),
-            A.GaussNoise(var_limit=(15.0, 30.0), p=1.0),
+            _compat_gauss_noise(15.0, 30.0),
         ]
     )
 

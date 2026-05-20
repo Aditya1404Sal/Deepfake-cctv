@@ -171,12 +171,17 @@ def extract(
 ) -> dict:
     detector = None if already_cropped else _FaceDetector()
     pairs = _iter_label_dirs(input_dir)
-    stats = {"processed": 0, "skipped": 0, "no_face": 0, "errors": 0}
-    written = 0
+    stats = {"processed": 0, "skipped": 0, "no_face": 0, "errors": 0, "per_label": {}}
+    # Split limit per label so we keep class balance.
+    per_label_cap: Optional[int] = None
+    if limit is not None:
+        active = [p for p in pairs if not (real_only and p[0].lower() != "real")] or pairs
+        per_label_cap = max(1, limit // max(1, len(active)))
     for label, folder in pairs:
+        if real_only and label and label.lower() != "real":
+            continue
+        written_this_label = 0
         for img_path in _iter_images(folder):
-            if real_only and label and label.lower() != "real":
-                continue
             effective_label = label or _infer_label_from_filename(img_path.name) or "Real"
             if real_only and effective_label.lower() != "real":
                 continue
@@ -204,9 +209,10 @@ def extract(
                     crop = _resize_square(crop, TARGET_SIZE)
                 _save_jpeg(crop, out_path)
                 stats["processed"] += 1
-                written += 1
-                if limit is not None and written >= limit:
-                    return stats
+                written_this_label += 1
+                stats["per_label"][effective_label] = stats["per_label"].get(effective_label, 0) + 1
+                if per_label_cap is not None and written_this_label >= per_label_cap:
+                    break
             except Exception as e:
                 _log.warning("error on %s: %s", img_path, e)
                 stats["errors"] += 1
