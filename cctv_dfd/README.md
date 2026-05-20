@@ -68,3 +68,61 @@ five degradation profiles and across datasets.
 
 Legacy reference scripts at the repo root (not modified, not imported except
 where explicitly noted): `augment_fixed.py`, `finetune.py`, `Deepfake_Detector.py`.
+
+## Running the inference API locally
+
+After training (see Colab notebooks above), download `results/checkpoints/local.pt`
+to this machine and start the FastAPI server:
+
+```bash
+cd cctv_dfd
+pip install -e ".[api]"   # adds fastapi + uvicorn + python-multipart
+# place the trained checkpoint at: results/checkpoints/local.pt
+
+# start the server (CPU is fine; ~1-1.5 s per image)
+uvicorn api.server:app --host 0.0.0.0 --port 8000
+```
+
+Endpoints:
+
+- `GET  /` — health + loaded model info (backbone, SHA-256, available
+  profiles and enhancement modes)
+- `POST /predict` — multipart image upload → JSON verdict only (fastest)
+- `POST /predict/heatmap` — multipart image → PNG of attention-rollout overlay
+- `POST /predict/full` — multipart image → JSON with embedded base64 heatmap
+
+Query params accepted by all three POSTs:
+
+- `enhance_mode` — `none` (default) / `forensic` / `aggressive`
+- `profile` — `clean` (default) / `light_cctv` / `heavy_cctv` /
+  `low_light_gray` / `ir_pseudo`
+
+Example with curl:
+
+```bash
+# quick verdict
+curl -X POST http://localhost:8000/predict \
+  -F "image=@some_face.jpg" \
+  -F "enhance_mode=forensic"
+
+# get heatmap PNG directly
+curl -X POST "http://localhost:8000/predict/heatmap?enhance_mode=forensic" \
+  -F "image=@some_face.jpg" \
+  --output heatmap.png
+```
+
+The interactive API docs (Swagger UI) are at `http://localhost:8000/docs` once
+the server is running — drop an image into the form, hit "Execute", see the
+JSON / PNG response.
+
+### Configuration via env vars
+
+- `CCTV_DFD_CHECKPOINT` — path to the head checkpoint (default `results/checkpoints/local.pt`)
+- `CCTV_DFD_DEVICE` — `cpu` (default) or `cuda`
+- `CCTV_DFD_PORT` — port to listen on (default 8000)
+- `CCTV_DFD_HOST` — interface to bind (default `0.0.0.0`)
+
+### CORS
+
+Wide-open by default so any browser frontend can hit `localhost:8000`. Lock
+down `allow_origins` in `api/server.py` before exposing publicly.

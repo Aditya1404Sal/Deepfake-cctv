@@ -32,6 +32,7 @@ dependencies = [
 [project.optional-dependencies]
 insight = ["insightface>=0.7", "onnxruntime>=1.16"]
 restore = ["realesrgan>=0.3", "basicsr>=1.4"]
+api = ["fastapi>=0.110", "uvicorn[standard]>=0.27", "python-multipart>=0.0.9"]
 
 [project.scripts]
 cctv-dfd = "cctv_dfd.cli:main"
