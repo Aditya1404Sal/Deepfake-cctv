@@ -82,7 +82,15 @@ class Backbone:
         if self.key.startswith("dinov2"):
             from transformers import AutoModel  # type: ignore
 
-            self.model = AutoModel.from_pretrained(self.spec.name)
+            # attn_implementation="eager" is required for output_attentions
+            # to actually populate (sdpa/flash-attn discard the maps).
+            try:
+                self.model = AutoModel.from_pretrained(
+                    self.spec.name, attn_implementation="eager"
+                )
+            except TypeError:
+                # transformers < 4.36 doesn't have the kwarg.
+                self.model = AutoModel.from_pretrained(self.spec.name)
             self.model.eval().to(self.device)
             for p in self.model.parameters():
                 p.requires_grad_(False)

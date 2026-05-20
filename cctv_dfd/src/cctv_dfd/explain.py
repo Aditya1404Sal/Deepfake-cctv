@@ -107,9 +107,14 @@ def explain_image(
     tensor = torch.from_numpy(rgb).permute(2, 0, 1).unsqueeze(0)
 
     cls, patches, attentions = backbone.forward_patches(tensor)
-    if attentions is None:
-        # Backbone (e.g. CLIP via open_clip) didn't expose attentions.
-        _log.warning("backbone %s does not expose attentions; saving raw prediction only", backbone_name)
+    if not attentions:
+        # Either: (a) backbone is CLIP via open_clip and doesn't return them,
+        # or (b) HF model was loaded without attn_implementation="eager" and
+        # the SDPA/flash kernels discarded them. We still save a placeholder
+        # output so the predict pipeline doesn't break.
+        _log.warning("backbone %s did not return attention maps; "
+                     "saving raw prediction only (load with attn_implementation='eager' "
+                     "for rollout heatmaps)", backbone_name)
         with torch.no_grad():
             logit = head(cls.to(device))
             prob = float(torch.sigmoid(logit).cpu().item())
